@@ -634,7 +634,7 @@ confusionMatrix(model.forest.r.o.pred, df.r.o.test$target)
 ### Summary ----
 #Random forest best was #.5617 model with model with all variables. It seems the best model I had was logisitc regression
 
-### Final Models ----
+# Final Models ----
 
 ## Logistic Regression ----
 # The best model for logistic regression was
@@ -681,5 +681,7 @@ write.csv(forest.final.pred, "ForestSubmission.csv", row.names = F)
 #Conclusions ----
 #It seems logisitic regression is the best. I believe the reason this is the case is because in terms of space the two
 #classes are very close together. The tree method split the data up by space but if the data is very close together 
-#then it will underperform.
+#then it will underperform. It didn't seem to be important to transform the variables here but getting ride of outliers
+#was a good decision for the logsitic regression. Also variable selection was good idea. The logisitc regression performed
+#better with the smaller subeset of variables. Where as the tree methods work better with more variables. There is probably #more that could be done like standardization as well as trying penalized logisitic regression. 
 
