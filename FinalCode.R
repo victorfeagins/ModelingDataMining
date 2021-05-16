@@ -558,13 +558,13 @@ confusionMatrix(model.tree.r.o.pred, df.r.o.test$target) # Acc .5646
 
 ### Summary ----
 # Transforming variables also didn't have an effect. The best model here was model with no outliers with .5646 acc
-#with underperfroms from logisitc regression nest model.
+#with underperfroms from logisitc regression best model.
 
 
 ## Random Forest ----
 #Now let's see how random forest compares
 
-train_control.forest <- trainControl(method="repeatedcv", number=10)
+train_control.forest <- trainControl(method="repeatedcv", number=100)
 
 ### Model with no transformations ----
 
@@ -598,7 +598,7 @@ model.forest.r <- train(target ~ .,
 
 model.forest.r.pred <- predict(model.forest.r , newdata = df.r.test)
 
-confusionMatrix(model.forest.r.pred, df.r.test$target) #.5617
+confusionMatrix(model.forest.r.pred, df.r.test$target)
 
 
 ### Model with no outliers ----
@@ -632,5 +632,54 @@ model.forest.r.o.pred <- predict(model.forest.r.o, newdata = df.r.o.test) #.517
 confusionMatrix(model.forest.r.o.pred, df.r.o.test$target) 
 
 ### Summary ----
+#Random forest best was #.5617 model with model with all variables. It seems the best model I had was logisitc regression
 
+### Final Models ----
+
+## Logistic Regression ----
+# The best model for logistic regression was
+# model.log.m.o : model with no transform and no outliers Acc = .5663
+
+## Decision Tree ----
+#The best model for decision trees was
+#model.tree.r.o : model with all the variables no outliers Acc = .5646
+
+## Random Forest ----
+#The best model for random forest was
+#model.forest.r: model with all the variables  Acc = .5667
+
+
+# Using Final Model ----
+df.final <- read_rds("Data/future_fundraising.rds")
+
+## Using Logistic Regression ----
+# Since the log model didn't have any transforms we can just plug in the data
+
+log.final.pred <- data.frame(value = predict(model.log.m.o, df.final))
+
+write.csv(log.final.pred, "LogSubmission.csv", row.names = F)
+#Score .65
+
+## Using Decision Tree ----
+#Again no transforms needed
+tree.final.pred <- data.frame(value = predict(model.tree.r.o, df.final))
+
+write.csv(tree.final.pred, "TreeSubmission.csv", row.names = F)
+
+#Score .6
+
+## Using Random Forest ----
+#Again no transforms needed
+
+forest.final.pred <- data.frame(value = predict(model.forest.r, df.final))
+
+write.csv(forest.final.pred, "ForestSubmission.csv", row.names = F)
+
+#Score .591667
+
+
+#Conclusions ----
+#It seems logisitic regression is the best. I believe the reason this is the case is because in terms of space the two
+#classes are very close together. The tree method split the data up by space but if the data is very close together 
+#then it will underperform.
 
