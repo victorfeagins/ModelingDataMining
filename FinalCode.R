@@ -338,12 +338,15 @@ Relationship(BoxCox.Transform(avg_gift))
 df.r.num <- select_if(df.r,is.numeric)
 
 df.r.num$mahal <- mahalanobis(df.r.num, colSums(df.r.num), cov(df.r.num))
-df.r.num$p <- pchisq(df.r.num$mahal, df = ncol(df.r.num) - 1, lower.tail = F)
+
+Out_ind <- which(df.r.num$mahal %in% boxplot.stats(df.r.num$mahal)$out)
+
+df.r.o<- df.r[-Out_ind,]
 
 #Modeling ----
 ##Variable Selection ----
 #Based off my analysis of each of the variables I will be selecting the ones I feel provide insight into modeling
-df.m <- df.r %>% 
+df.m <- df.r.o %>% 
   dplyr::select(homeowner, female, num_child, income, wealth, num_prom, lifetime_gifts, largest_gift, last_gift, months_since_donate, avg_gift, target)
 
 #Creating a separate dataset for modeling that is based off transformed data
