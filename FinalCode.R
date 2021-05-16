@@ -34,7 +34,10 @@ table(zipconvert4, target)
 table(zipconvert5, target)
 # Zipcode seems to be split evenly among donors and no donors solidifying this variables might not belong in a model.
 
-
+chisq.test(table(zipconvert2, target))
+chisq.test(table(zipconvert3, target))
+chisq.test(table(zipconvert4, target))
+chisq.test(table(zipconvert5, target))
 ### Home Owner Contingency Tables ----
 table(homeowner, target)
 # Same with homeowner seems to be close. We imagine that homeowners own more money.
@@ -311,7 +314,7 @@ Relationship(log(time_lag + 1)) # Yep seems to be very similar
 
 
 
-# Average dollar amoung of gifts to date ----
+# Average dollar amount of gifts to date ----
 #### Univariate ----
 summary(avg_gift) #From 2.139 to 122.167
 
@@ -598,7 +601,7 @@ model.forest.r <- train(target ~ .,
 
 model.forest.r.pred <- predict(model.forest.r , newdata = df.r.test)
 
-confusionMatrix(model.forest.r.pred, df.r.test$target)
+confusionMatrix(model.forest.r.pred, df.r.test$target) #.5683 ACC
 
 
 ### Model with no outliers ----
@@ -632,7 +635,7 @@ model.forest.r.o.pred <- predict(model.forest.r.o, newdata = df.r.o.test) #.517
 confusionMatrix(model.forest.r.o.pred, df.r.o.test$target) 
 
 ### Summary ----
-#Random forest best was #.5617 model with model with all variables. It seems the best model I had was logisitc regression
+#Random forest best was #.5646 model with model with all variables. It seems the best model I had was logisitc regression
 
 # Final Models ----
 
