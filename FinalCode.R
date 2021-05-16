@@ -1,10 +1,10 @@
 
 #Packages ----
 library(tidyverse)
-library (tree)
 library(MASS)
 library(car)
-library(caret)
+library(caret) # For modeling
+library(rpart.plot) # For plotting trees
 # Data ----
 df.r <- read_rds("Data/fundraising.rds")
 
@@ -485,7 +485,152 @@ confusionMatrix(model.log.r.o.pred, df.r.o.test$target) # Acc .5476
 # When using all the variables there is only a slight increase in accuracy with the all variables model. It looks like removing the outliers did our model good.
 
 
-## Random Forest ----
 
+## Decision Tree ----
+#After running a logistic model and getting a highest Accuracy .5663 let's see how decision trees compares.
+
+
+### Model with no transformations ----
+train_control.tree <- trainControl(method="repeatedcv", number=10, repeats=3)
+
+model.tree.m = train(target ∼ ., data=df.m.train, trControl=train_control.tree,method='rpart')
+
+
+rpart.plot(model.tree.m$finalModel)
+
+model.tree.m.pred <- predict(model.tree.m, newdata = df.m.test)
+
+confusionMatrix(model.tree.m.pred , df.m.test$target) # Got .5383 accuracy
+
+
+### Model with transformations ----
+model.tree.m.t = train(target ∼ ., data=df.m.t.train, trControl=train_control.tree,method='rpart')
+
+
+rpart.plot(model.tree.m.t$finalModel)
+
+model.tree.m.t.pred <- predict(model.tree.m.t, newdata = df.m.t.test)
+
+confusionMatrix(model.tree.m.t.pred , df.m.t.test$target) # Got .5383 accuracy
+
+
+### Model with all variables  ----
+model.tree.r <- train(target ~ .,
+                     data = df.r.train,
+                     trControl = train_control.tree,
+                     method = "rpart")
+
+model.tree.r.pred <- predict(model.tree.r , newdata = df.r.test)
+
+confusionMatrix(model.tree.r.pred, df.r.test$target) #.5383 accuracy
+
+
+### Model with no outliers ----
+model.tree.m.o <- train(target ~ .,
+                       data = df.m.o.train,
+                       trControl = train_control.tree,
+                       method = "rpart")
+
+model.tree.m.o.pred <- predict(model.tree.m.o, newdata = df.m.o.test)
+
+confusionMatrix(model.tree.m.o.pred, df.m.o.test$target) #Acc .5493
+#getting rid of outliers hurt the model. Which makes sense the model is not seeing those types of observations.
+
+### Model with no outliers with Transform ----
+model.tree.m.o.t <- train(target ~ .,
+                         data = df.m.o.t.train,
+                         trControl = train_control.tree,
+                         method = "rpart")
+
+model.tree.m.o.t.pred <- predict(model.tree.m.o.t, newdata = df.m.o.t.test)
+
+confusionMatrix(model.tree.m.o.t.pred, df.m.o.t.test$target) # Acc .5493
+
+### Model with no outliers all variables ----
+model.tree.r.o <- train(target ~ .,
+                       data = df.r.o.train,
+                       trControl = train_control.tree,
+                       method = "rpart")
+
+model.tree.r.o.pred <- predict(model.tree.r.o, newdata = df.r.o.test)
+
+confusionMatrix(model.tree.r.o.pred, df.r.o.test$target) # Acc .5646
+
+### Summary ----
+# Transforming variables also didn't have an effect. The best model here was model with no outliers with .5646 acc
+#with underperfroms from logisitc regression nest model.
+
+
+## Random Forest ----
+#Now let's see how random forest compares
+
+train_control.forest <- trainControl(method="repeatedcv", number=10)
+
+### Model with no transformations ----
+
+
+model.forest.m = train(target ∼ ., data=df.m.train, 
+                       trControl=train_control.forest,
+                       method='rf')
+
+
+
+model.forest.m.pred <- predict(model.tree.m, newdata = df.m.test)
+
+confusionMatrix(model.forest.m.pred , df.m.test$target) #.5383 accuracy
+
+
+### Model with transformations ----
+model.forest.m.t = train(target ∼ ., data=df.m.t.train, trControl=train_control.forest,method='rf')
+
+
+
+model.forest.m.t.pred <- predict(model.forest.m.t, newdata = df.m.t.test)
+
+confusionMatrix(model.forest.m.t.pred , df.m.t.test$target) #.55 accuracy
+
+
+### Model with all variables  ----
+model.forest.r <- train(target ~ .,
+                      data = df.r.train,
+                      trControl = train_control.forest,
+                      method = "rf")
+
+model.forest.r.pred <- predict(model.forest.r , newdata = df.r.test)
+
+confusionMatrix(model.forest.r.pred, df.r.test$target) #.5617
+
+
+### Model with no outliers ----
+model.forest.m.o <- train(target ~ .,
+                        data = df.m.o.train,
+                        trControl = train_control.forest,
+                        method = "rf")
+
+model.forest.m.o.pred <- predict(model.forest.m.o, newdata = df.m.o.test)
+
+confusionMatrix(model.forest.m.o.pred, df.m.o.test$target) #.5578
+
+### Model with no outliers with Transform ----
+model.forest.m.o.t <- train(target ~ .,
+                          data = df.m.o.t.train,
+                          trControl = train_control.forest,
+                          method = "rf")
+
+model.forest.m.o.t.pred <- predict(model.forest.m.o.t, newdata = df.m.o.t.test)
+
+confusionMatrix(model.forest.m.o.t.pred, df.m.o.t.test$target)  #.5578
+
+### Model with no outliers all variables ----
+model.forest.r.o <- train(target ~ .,
+                        data = df.r.o.train,
+                        trControl = train_control.forest,
+                        method = "rf")
+
+model.forest.r.o.pred <- predict(model.forest.r.o, newdata = df.r.o.test) #.517
+
+confusionMatrix(model.forest.r.o.pred, df.r.o.test$target) 
+
+### Summary ----
 
 
