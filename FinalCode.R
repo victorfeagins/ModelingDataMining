@@ -10,12 +10,6 @@ df.r <- read_rds("Data/fundraising.rds")
 
 attach(df.r)
 
-#Partition ----
-set.seed(12345)
-partion <- .80
-tt <- sample(nrow(df.r), nrow(df.r)*partion)
-df.r.train <- df.r[tt,]
-df.r.test <- df.r[-tt,]
 
 
 #EDA ----
@@ -66,9 +60,10 @@ BoxCox.Transform <- function(vector){
   #Adds 1 to the data then does a box cox transform
   #Only works if the data is postive
   x <- 1:length(vector)
-  bc<- boxcox(vector+1~x)
+  y <- vector+1
+  bc<- boxcox(y~x)
   lambda <- bc$x[which.max(bc$y)]
-  transform.y <- ((vector)^lambda-1)/lambda
+  transform.y <- ((y)^lambda-1)/lambda
   transform.y
 }
 
@@ -92,20 +87,20 @@ Relationship <- function(vector){
 ncol(select_if(df.r, is.numeric)) # There are 14 numeric columns
 ## Numeric Variables ----
 ### Number of Children ----
-range(num_child) #Ranges from 1 to 5
+summary(num_child) #Ranges from 1 to 5
 table(num_child, target)
 # It seems most families have 1 child. Surprising there are no households that have zero children.
 # Like Female and Homeowner there is some information contained here.
 #Since the distance between the levels of children are the same I will keep it a numeric.
-
 ### Income ----
-range(income) #Ranges from 1 to 7
+summary(income) #Ranges from 1 to 7
 table(income, target)
 # It seems that higher income could lead to more donations but has a small effect. 
 
 
+
 ### Wealth ----
-range(wealth) #Ranges from 0 to 9
+summary(wealth) #Ranges from 0 to 9
 table(wealth, target)
 # It seems rich people will donate more. In wealth 7 there is a big difference. In wealth less than 5 Most people do not donate.
 # Perhaps I should make a dummy variable at the less than 5 or greater than 5 for rich and poor.
@@ -114,7 +109,7 @@ table(wealth, target)
 ### Home Value ----
 #### Univariate ----
 #This is home neighberhood average value.
-range(home_value) #from to 0 to 5945
+summary(home_value) #from to 0 to 5945
 # It is strange that home_value is zero. These might be outliers. One possible explanation is living on a military base.
 sum(home_value == 0) #only 22 observation have 0 home_value
 
@@ -135,7 +130,7 @@ Relationship(log(home_value + 1))
 
 ### Median Family Income ----
 #### Univariate ----
-range(med_fam_inc) # From 0 to 1500
+summary(med_fam_inc) # From 0 to 1500
 sum(med_fam_inc == 0) # Only 18 have a zero
 #Perhaps outliers
 
@@ -159,9 +154,10 @@ Relationship(log(med_fam_inc +1))
 
 
 
+
 ### Average Family Income ----
 #### Univariate ----
-range(avg_fam_inc) #From 0 to 1331
+summary(avg_fam_inc) #From 0 to 1331
 sum(avg_fam_inc == 0)
 #Zeros here 18
 Normal(avg_fam_inc)
@@ -180,8 +176,9 @@ Relationship(BoxCox.Transform(avg_fam_inc))
 
 
 
+
 #Percent Earning less then 15k ----
-range(pct_lt15k) #From 0 to 90 percent
+summary(pct_lt15k) #From 0 to 90 percent
 sum(pct_lt15k == 0)
 # 174 observations that have zero meaning very rich neighborhood
 
@@ -204,9 +201,11 @@ Relationship(sqrt(pct_lt15k))
 cor(cbind(home_value, med_fam_inc, avg_fam_inc, pct_lt15k))
 # Yes as expected this variables are correlated with eachother. Based on the results so far I probably would not model with these variables.
 
+
+
 #Lifetime Number of Promotions Received ----
 #### Univariate ----
-range(num_prom) #11 to 157
+summary(num_prom) #11 to 157
 # That means everyone one in this data set has received marketing before. That is not good since the model may not be good 
 # for predicting new donors.
 
@@ -222,3 +221,141 @@ Relationship(num_prom)
 #Yahoo! We got our first variable that tells us something about donors. As number of Promotions increases we get more donors.
 #Which that makes sense.
 Relationship(sqrt(num_prom))
+#Transforming the data does not change the result
+
+
+
+
+#Dollar amount of lifetime gifts to date ----
+#### Univariate ----
+summary(lifetime_gifts) #Ranges from 15 to 5674.9
+#Those large values have got to be outliers.
+
+Normal(lifetime_gifts)
+#Not normal right skewed
+Normal(log(lifetime_gifts))
+Normal(BoxCox.Transform(lifetime_gifts))
+#Transforming helps a lot here. BoxCox helps a lot here.
+
+#### Relationship with Donor ----
+Relationship(lifetime_gifts)
+#Interestingly ANOVA says no while Kruskal Wallis says yes. Let's try transformed
+Relationship(BoxCox.Transform(lifetime_gifts))
+#Yeah there is a slight increase with lifetime gifts goes up.
+
+
+
+
+
+#Dollar amount of largest gift ----
+#### Univariate ----
+summary(largest_gift) #range 5 to 1000
+
+Normal(largest_gift) #Not normal most people donate small amounts of money
+Normal(log(largest_gift))
+Normal(BoxCox.Transform(largest_gift))
+##### Relationship with Donor ----
+Relationship(largest_gift)
+Relationship(BoxCox.Transform(largest_gift))
+#Interestingly it seems that Largest gift could slightly lean towards not donating. This could be the case if you
+#had just a big spender who only makes one donation.
+
+# Dollar amount of most recent gift ----
+#### Univariate ----
+summary(last_gift) #From 0 to 219
+#No really high numbers here. This means that big spenders donated again.
+
+Normal(last_gift)
+#not normal of course.
+
+Normal(log(last_gift+1)) #log helps
+
+##### Relationship with Donor ----
+Relationship(last_gift)
+Relationship(log(last_gift+1))
+#Seems that if the last gift someone gave was a large amount then are less likely to donate again which make sense
+
+#Numbers of Months Since last donation ----
+##### Univariate ----
+summary(months_since_donate) #From 17 to 37
+Normal(months_since_donate)
+#Interesting maybe my most left skewed variable. Most people will wait longer.
+
+Normal(sqrt(max(months_since_donate+1) - months_since_donate)) #Unique trasform for left skewed data. Helps a tiny bit
+
+##### Relationship with Donor ----
+Relationship(months_since_donate)
+Relationship(sqrt(max(months_since_donate+1) - months_since_donate))
+
+# This one is harder to interpret. But I think the longer people wait will donate more. Or it means that donation people
+#donate at a usually time. I am not sure.
+
+
+# Number of months between first and second gift ----
+##### Univariate ----
+summary(time_lag) #Ranges to 0 to 77
+#Most people donate in a short time frame, less than a year
+Normal(time_lag)
+#More right skewed not normal data.
+Normal(log(time_lag + 1))# Log helps a lot.
+Normal(BoxCox.Transform(time_lag)) #BoxCox does help
+#log helps more I think.
+
+##### Relationship with Donor ----
+Relationship(time_lag) #Okay seems like there is not difference
+
+Relationship(log(time_lag + 1)) # Yep seems to be very similar
+
+
+
+
+
+
+# Average dollar amoung of gifts to date ----
+#### Univariate ----
+summary(avg_gift) #From 2.139 to 122.167
+
+Normal(avg_gift)
+#More right skew not normal
+
+Normal(log(avg_gift)) #Seems to have worked fine
+
+Normal(BoxCox.Transform(avg_gift)) #WOW boxcox got it really close.
+
+##### Relationship with Donor ----
+
+Relationship(avg_gift) #seems the larger the gift less likely to donate again maybe
+Relationship(BoxCox.Transform(avg_gift))
+#Yep that seems to be the case that the larger the gift less likely to donate again and this agrees with previous variables
+
+
+
+
+
+#Modeling ----
+##Variable Selection ----
+#Based off my analysis of each of the variables I will be selecting the ones I feel provide insight into modeling
+df.m <- df.r %>% 
+  dplyr::select(homeowner, female, num_child, income, wealth, num_prom, lifetime_gifts, largest_gift, last_gift, months_since_donate, avg_gift, target)
+
+#Creating a seperate dataset for modeling that is based off transformed data
+df.m.t <- df.m %>% 
+  mutate(wealth.rich = ifelse(wealth > 5, 1, 0),
+         num_prom.log = log(num_prom),
+         lifetime_gifts.bc = BoxCox.Transform(lifetime_gifts),
+         largest_gift.bc =  BoxCox.Transform(largest_gift),
+         last_gift.log = log(last_gift + 1),
+         months_since_donate.sqrt = sqrt(max(months_since_donate+1) - months_since_donate),
+         avg_gift.bc = BoxCox.Transform(avg_gift)) %>% 
+  dplyr::select(-wealth, -num_prom, -lifetime_gifts, -largest_gift, -last_gift, -months_since_donate, -avg_gift)
+
+
+##Partition ----
+set.seed(12345)
+partion <- .80
+tt <- sample(nrow(df.m), nrow(df.m)*partion)
+df.m.train <- df.m[tt,]
+df.m.test <- df.m[-tt,]
+
+df.m.t.train <- df.m.t[tt,]
+df.m.t.test <- df.m.t[-tt,]
