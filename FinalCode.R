@@ -4,7 +4,7 @@ library(tidyverse)
 library (tree)
 library(MASS)
 library(car)
-
+library(caret)
 # Data ----
 df.r <- read_rds("Data/fundraising.rds")
 
@@ -338,7 +338,7 @@ Relationship(BoxCox.Transform(avg_gift))
 df.m <- df.r %>% 
   dplyr::select(homeowner, female, num_child, income, wealth, num_prom, lifetime_gifts, largest_gift, last_gift, months_since_donate, avg_gift, target)
 
-#Creating a seperate dataset for modeling that is based off transformed data
+#Creating a separate dataset for modeling that is based off transformed data
 df.m.t <- df.m %>% 
   mutate(wealth.rich = ifelse(wealth > 5, 1, 0),
          num_prom.log = log(num_prom),
@@ -350,6 +350,9 @@ df.m.t <- df.m %>%
   dplyr::select(-wealth, -num_prom, -lifetime_gifts, -largest_gift, -last_gift, -months_since_donate, -avg_gift)
 
 
+## Handling Outliers ----
+
+
 ##Partition ----
 set.seed(12345)
 partion <- .80
@@ -359,3 +362,48 @@ df.m.test <- df.m[-tt,]
 
 df.m.t.train <- df.m.t[tt,]
 df.m.t.test <- df.m.t[-tt,]
+
+#For fun we will make a train and test split with all the variables
+df.r.train <- df.r[tt,]
+df.r.test <-  df.r[-tt,]
+
+## Logistic Regression ----
+#A good base line let's do a logistic Regression
+train_control <- trainControl(method = "cv", number = 10)
+model <- train(target ~ .,
+               data = df.m.train,
+               trControl = train_control,
+               method = "glm",
+               family=binomial())
+
+model.pred <- predict(model, newdata = df.m.test)
+
+confusionMatrix(model.pred, df.m.test$target)
+
+
+model.t <- train(target ~ .,
+               data = df.m.t.train,
+               trControl = train_control,
+               method = "glm",
+               family=binomial())
+
+model.t.pred <- predict(model.t, newdata = df.m.t.test)
+
+confusionMatrix(model.t.pred, df.m.t.test$target)
+#Seems in logistic regression is getting a 55% accuracy with both the transformed data and non transformed data
+
+# For fun let's run it on all the variables
+model.r <- train(target ~ .,
+                 data = df.r.train,
+                 trControl = train_control,
+                 method = "glm",
+                 family=binomial())
+
+model.r.pred <- predict(model.r, newdata = df.r.test)
+
+confusionMatrix(model.r.pred , df.r.test$target)
+
+### Summary ----
+#Running logistic regression we get a 55% accuracy with the variables we selected and transformed. Compared to logistic regression that was ran with all the variables we gained 1%
+
+
