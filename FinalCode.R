@@ -334,19 +334,23 @@ Relationship(BoxCox.Transform(avg_gift))
 
 
 ## Handling Outliers ----
-# We have seen that there are outliers in our dataset. 
+# We have seen that there are outliers in our dataset. #We will be using mahalanobis distance to drop outliers.
+#This is done by using the numeric variables and geting rid of values that have very high or low distances. But since
+#we are unsure how this might effect the models we will create a copy dataset.
 df.r.num <- select_if(df.r,is.numeric)
 
 df.r.num$mahal <- mahalanobis(df.r.num, colSums(df.r.num), cov(df.r.num))
 
 Out_ind <- which(df.r.num$mahal %in% boxplot.stats(df.r.num$mahal)$out)
-
+length(Out_ind) #61 outiler observations
 df.r.o<- df.r[-Out_ind,]
 
 #Modeling ----
 ##Variable Selection ----
+
+## Data with Outliers ----
 #Based off my analysis of each of the variables I will be selecting the ones I feel provide insight into modeling
-df.m <- df.r.o %>% 
+df.m <- df.r%>% 
   dplyr::select(homeowner, female, num_child, income, wealth, num_prom, lifetime_gifts, largest_gift, last_gift, months_since_donate, avg_gift, target)
 
 #Creating a separate dataset for modeling that is based off transformed data
@@ -359,8 +363,19 @@ df.m.t <- df.m %>%
          months_since_donate.sqrt = sqrt(max(months_since_donate+1) - months_since_donate),
          avg_gift.bc = BoxCox.Transform(avg_gift)) %>% 
   dplyr::select(-wealth, -num_prom, -lifetime_gifts, -largest_gift, -last_gift, -months_since_donate, -avg_gift)
+## Data Without Outliers ----
+df.m.o <- df.r.o%>% 
+  dplyr::select(homeowner, female, num_child, income, wealth, num_prom, lifetime_gifts, largest_gift, last_gift, months_since_donate, avg_gift, target)
 
-
+df.m.o.t <- df.m.o %>% 
+  mutate(wealth.rich = ifelse(wealth > 5, 1, 0),
+         num_prom.log = log(num_prom),
+         lifetime_gifts.bc = BoxCox.Transform(lifetime_gifts),
+         largest_gift.bc =  BoxCox.Transform(largest_gift),
+         last_gift.log = log(last_gift + 1),
+         months_since_donate.sqrt = sqrt(max(months_since_donate+1) - months_since_donate),
+         avg_gift.bc = BoxCox.Transform(avg_gift)) %>% 
+  dplyr::select(-wealth, -num_prom, -lifetime_gifts, -largest_gift, -last_gift, -months_since_donate, -avg_gift)
 
 ##Partition ----
 set.seed(12345)
@@ -372,47 +387,105 @@ df.m.test <- df.m[-tt,]
 df.m.t.train <- df.m.t[tt,]
 df.m.t.test <- df.m.t[-tt,]
 
+
+
 #For fun we will make a train and test split with all the variables
 df.r.train <- df.r[tt,]
 df.r.test <-  df.r[-tt,]
 
+### Parition for Outliers ----
+tt <- sample(nrow(df.m.o), nrow(df.m.o)*partion)
+
+df.r.o.train <- df.r.o[tt,]
+df.r.o.test <- df.r.o[-tt,]
+
+df.m.o.train <- df.m.o[tt,]
+df.m.o.test <- df.m.o[-tt,]
+
+df.m.o.t.train <- df.m.o.t[tt,]
+df.m.o.t.test <- df.m.o.t[-tt,]
+
 ## Logistic Regression ----
 #A good base line let's do a logistic Regression
+### Model without transformation ----
 train_control <- trainControl(method = "cv", number = 10)
-model <- train(target ~ .,
+model.log.m <- train(target ~ .,
                data = df.m.train,
                trControl = train_control,
                method = "glm",
                family=binomial())
 
-model.pred <- predict(model, newdata = df.m.test)
+model.log.m.pred <- predict(model.log.m, newdata = df.m.test)
 
-confusionMatrix(model.pred, df.m.test$target)
+confusionMatrix(model.log.m.pred, df.m.test$target) # Acc .55
 
+### Model with transformations ----
 
-model.t <- train(target ~ .,
+model.log.t <- train(target ~ .,
                data = df.m.t.train,
                trControl = train_control,
                method = "glm",
                family=binomial())
 
-model.t.pred <- predict(model.t, newdata = df.m.t.test)
+model.log.t.pred <- predict(model.log.t, newdata = df.m.t.test)
 
-confusionMatrix(model.t.pred, df.m.t.test$target)
+confusionMatrix(model.log.t.pred, df.m.t.test$target) #Acc .55
 #Seems in logistic regression is getting a 55% accuracy with both the transformed data and non transformed data
 
-# For fun let's run it on all the variables
-model.r <- train(target ~ .,
+### Model with all variables No Transform ----
+
+model.log.r <- train(target ~ .,
                  data = df.r.train,
                  trControl = train_control,
                  method = "glm",
                  family=binomial())
 
-model.r.pred <- predict(model.r, newdata = df.r.test)
+model.log.r.pred <- predict(model.log.r , newdata = df.r.test)
 
-confusionMatrix(model.r.pred , df.r.test$target)
+confusionMatrix(model.log.r.pred, df.r.test$target)  #Acc .5433
+
+### Model with no outliers ----
+model.log.m.o <- train(target ~ .,
+               data = df.m.o.train,
+               trControl = train_control,
+               method = "glm",
+               family=binomial())
+
+model.log.m.o.pred <- predict(model.log.m.o, newdata = df.m.o.test)
+
+confusionMatrix(model.log.m.o.pred, df.m.o.test$target) #Acc .5663
+
+### Model with no outliers with Transform ----
+model.log.m.o.t <- train(target ~ .,
+                       data = df.m.o.t.train,
+                       trControl = train_control,
+                       method = "glm",
+                       family=binomial())
+
+model.log.m.o.t.pred <- predict(model.log.m.o.t, newdata = df.m.o.t.test)
+
+confusionMatrix(model.log.m.o.t.pred, df.m.o.t.test$target) # Acc .5612
+
+### Model with no outliers all variables ----
+model.log.r.o <- train(target ~ .,
+                         data = df.r.o.train,
+                         trControl = train_control,
+                         method = "glm",
+                         family=binomial())
+
+model.log.r.o.pred <- predict(model.log.r.o, newdata = df.r.o.test)
+
+confusionMatrix(model.log.r.o.pred, df.r.o.test$target) # Acc .5476
+
+
 
 ### Summary ----
-#Running logistic regression we get a 55% accuracy with the variables we selected and transformed. Compared to logistic regression that was ran with all the variables we gained 1%
+#Running logistic regression we get a 55% accuracy with the variables we selected and transformed. Compared to logistic regression that was ran with all the variables we gained 1%.
+#When we remove outliers we get an increase in accuracy to .5663 in the un-transformed data and .5612 in the transformed data
+# When using all the variables there is only a slight increase in accuracy with the all variables model. It looks like removing the outliers did our model good.
+
+
+## Random Forest ----
+
 
 
